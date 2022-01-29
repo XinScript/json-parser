@@ -1,5 +1,5 @@
 import { Token, TokenType } from './token'
-import { JsonParseError } from './error'
+import { error } from './error'
 
 export default class Tokenizer {
   private idx: number = 0
@@ -17,10 +17,6 @@ export default class Tokenizer {
     for (let i = 0; i < this.tokens.length; i++) {
       yield this.tokens[i]
     }
-  }
-
-  private error(message: string) {
-    throw new JsonParseError(`line: ${this.line}, ${message}`)
   }
 
   private read(): string {
@@ -47,7 +43,7 @@ export default class Tokenizer {
       if (this.source.slice(this.idx, this.idx + 3) === 'ull') {
         this.idx += 3
         return true
-      } else this.error('Invalid Json Character')
+      } else error('Invalid Json Character')
     } else {
       return false
     }
@@ -58,7 +54,7 @@ export default class Tokenizer {
       if (this.source.slice(this.idx, this.idx + 3) === 'rue') {
         this.idx += 3
         return true
-      } else this.error('Invalid Json Character')
+      } else error('Invalid Json Character')
     } else {
       return false
     }
@@ -69,7 +65,7 @@ export default class Tokenizer {
       if (this.source.slice(this.idx, this.idx + 4) === 'alse') {
         this.idx += 4
         return true
-      } else this.error('Invalid Json Character')
+      } else error('Invalid Json Character')
     } else {
       return false
     }
@@ -82,26 +78,25 @@ export default class Tokenizer {
   private readString(): string {
     const sb = []
     for (let c = this.read(); c !== '"'; c = this.read()) {
-      if (c === null) this.error('Invalid EOF')
+      if (c === null) error('Invalid EOF')
       if (this.isEscape(c)) continue
-      if (this.isLineBreak(c))
-        this.error('Invalid String Format:Line break should NOT be in string')
+      if (this.isLineBreak(c)) error('Invalid String Format:Line break should NOT be in string')
       sb.push(c)
     }
     return sb.join('')
   }
 
-  private readNumber(): number {
+  private readNumber(): string {
     let sb = []
     for (let c = this.read(); c !== null; c = this.read()) {
       if (this.isNum(c)) sb.push(c)
       else if (c === '.' && this.isNum(sb[sb.length - 1])) sb.push(c)
       else {
         if (sb[sb.length - 1] === '.')
-          this.error('Invalid Number Format: Number string should not end with dot')
+          error('Invalid Number Format: Number string should not end with dot')
         else {
           this.unread()
-          return +sb.join('')
+          return sb.join('')
         }
       }
     }
@@ -130,7 +125,7 @@ export default class Tokenizer {
       if (this.isFalse(c)) return new Token(TokenType.Boolean, 'false', this.idx)
       if (this.isTrue(c)) return new Token(TokenType.Boolean, 'true', this.idx)
 
-      this.error('Invalid Json Character')
+      error('Invalid Json Character')
     }
   }
 }

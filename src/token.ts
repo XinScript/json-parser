@@ -1,15 +1,22 @@
-enum TokenType {
+enum ValueTokenType {
+  String = 'String',
+  Boolean = 'Boolean',
+  Number = 'Number',
+  Null = 'Null',
+}
+
+enum NonValueTokenType {
   ArrayBegin = 'Array Begin',
   ArrayEnd = 'Array End',
   ObjectBegin = 'Object Begin',
   ObjectEnd = 'Object End',
   KeyValueDelimiter = 'Key Value Delimiter',
   MemberDelimiter = 'MemberDelimiter',
-  String = 'String',
-  Boolean = 'Boolean',
-  Number = 'Number',
-  Null = 'Null',
 }
+
+const TokenType = { ...NonValueTokenType, ...ValueTokenType }
+
+type TokenType = NonValueTokenType | ValueTokenType
 
 type TokenValue = string | number | boolean | null
 
@@ -24,4 +31,4 @@ class Token {
     this.pos = pos
   }
 }
-export { Token, TokenType, TokenValue }
+export { Token, TokenType, TokenValue, ValueTokenType }

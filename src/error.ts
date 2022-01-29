@@ -7,4 +7,8 @@ class JsonParseError extends Error {
   }
 }
 
-export { JsonParseError }
+function error(message: string) {
+  throw new JsonParseError(`${message}`)
+}
+
+export { JsonParseError, error }
