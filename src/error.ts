@@ -7,15 +7,25 @@ class JsonParseError extends Error {
   }
 }
 
-class ErrorHanlder {
-  context: string
-  constructor(context: string) {
-    this.context = context
+class TokenParseError extends JsonParseError {
+  constructor(message: string) {
+    super(message)
   }
 }
 
-function error(message: string) {
-  throw new JsonParseError(`${message}`)
+class ParseError extends JsonParseError {
+  constructor(message: string) {
+    super(message)
+  }
 }
 
-export { JsonParseError, error }
+class JsonErrorThrower {
+  static tokenizeError(message: string) {
+    throw new TokenParseError(`${message}`)
+  }
+  static parseError(message: string) {
+    throw new ParseError(`${message}`)
+  }
+}
+
+export { JsonErrorThrower }

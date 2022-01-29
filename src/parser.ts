@@ -1,8 +1,10 @@
 import { TokenType, ValueTokenType, Token } from './token'
 import Tokenizer from './tokenizer'
-import { error } from './error'
+import { JsonErrorThrower } from './error'
 
 type JsonValue = object | string | number | boolean | null
+
+const error = JsonErrorThrower.parseError
 
 export default class Parser {
   tokenizer: Tokenizer

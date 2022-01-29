@@ -1,9 +1,10 @@
 import { Token, TokenType } from './token'
-import { error } from './error'
+import { JsonErrorThrower } from './error'
+
+const error = JsonErrorThrower.tokenizeError
 
 export default class Tokenizer {
   private idx: number = 0
-  private line: number = 0
   source: string
   tokens: Token[] = []
   constructor(source: string) {
@@ -106,7 +107,6 @@ export default class Tokenizer {
     for (let c = this.read(); c !== null; c = this.read()) {
       if (this.isSpace(c)) continue
       if (this.isLineBreak(c)) {
-        this.line++
         continue
       }
       if (c === '{') return new Token(TokenType.ObjectBegin, '{', this.idx)
