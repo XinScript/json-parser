@@ -7,6 +7,13 @@ class JsonParseError extends Error {
   }
 }
 
+class ErrorHanlder {
+  context: string
+  constructor(context: string) {
+    this.context = context
+  }
+}
+
 function error(message: string) {
   throw new JsonParseError(`${message}`)
 }

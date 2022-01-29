@@ -16,7 +16,10 @@ export default class Parser {
   private unread(): void {
     --this.idx
   }
-  parse(): object | Array<JsonValue> {
+  private last(): Token {
+    return this.tokenizer.tokens[this.idx - 2]
+  }
+  parse(): object | JsonValue[] {
     const token = this.read()
     if (token.type === TokenType.ObjectBegin) {
       return this.parseObject()
@@ -34,31 +37,30 @@ export default class Parser {
         this.unread()
         const [key, value] = this.parseKeyValue()
         o[key] = value
-        this.handleMemberDelmiter()
+
+        if (this.read()?.type === TokenType.MemberDelimiter) continue
+        else this.unread()
       } else if (token.type === TokenType.ObjectEnd) {
-        return o
+        if (this.last()?.type === TokenType.MemberDelimiter) error('no comma before }')
+        else return o
       } else {
         error(`pos ${token.pos}, expect string or }`)
       }
   }
-  private parseArray(): Array<JsonValue> {
-    return []
-  }
-
-  private handleMemberDelmiter() {
-    const token = this.read()
-    if (token.type === TokenType.ObjectEnd) {
-      this.unread()
-    } else if (token.type === TokenType.MemberDelimiter) {
-      let expectString = this.read()
-      if (expectString.type === TokenType.String) {
+  private parseArray(): JsonValue[] {
+    const arr: JsonValue[] = []
+    for (let token = this.read(); token; token = this.read()) {
+      if (token.type === TokenType.ArrayEnd) {
+        if (this.last().type === TokenType.MemberDelimiter) error('expect member value after comma')
+        else return arr
+      } else if (token.type === TokenType.MemberDelimiter) continue
+      else {
         this.unread()
-      } else {
-        error('expect new member key after comma')
+        let value = this.parseValue()
+        arr.push(value)
       }
-    } else {
-      error('expect comma or } after member value')
     }
+    error('[ CANNOT be EOF')
   }
 
   private parseKeyValue(): [string, JsonValue] {
@@ -78,6 +80,9 @@ export default class Parser {
     }
     if (token.type === TokenType.ArrayBegin) {
       return this.parseArray()
+    }
+    if (token.type === TokenType.ArrayEnd) {
+      return []
     }
     if (token.type in ValueTokenType) {
       switch (token.type) {
