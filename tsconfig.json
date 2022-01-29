@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "allowJs": false,
+    "moduleResolution": "node",
+    "target": "ES3",
+    "esModuleInterop": true,
+    "noImplicitAny": true,
+    "downlevelIteration": true
+  }
+}
