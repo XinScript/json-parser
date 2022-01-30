@@ -4,7 +4,13 @@
     "moduleResolution": "node",
     "target": "ES3",
     "esModuleInterop": true,
+    "module": "CommonJS",
     "noImplicitAny": true,
-    "downlevelIteration": true
-  }
+    "downlevelIteration": true,
+    "sourceMap": true,
+    "alwaysStrict": true,
+    "outDir": "dist"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "**/*.spec.ts"]
 }

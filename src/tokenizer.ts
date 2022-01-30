@@ -1,4 +1,4 @@
-import { Token, TokenType, TokenValue } from './token'
+import { Token, TokenType } from './token'
 import { TokenParseError } from './error'
 
 export default class Tokenizer {

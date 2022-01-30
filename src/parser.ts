@@ -4,126 +4,147 @@ import { ParseError } from './error'
 
 type JsonValue = object | string | number | boolean | null
 
-enum ArrayParseState {
-  Start,
-  ExpectValue,
-  ValueRead,
-}
-
-enum ObjectParseState {
-  Start,
-  ExpectMember,
-  MemberRead,
-}
-
 export default class Parser {
   tokenizer: Tokenizer
   private idx: number = 0
+
   constructor(tokenizer: Tokenizer) {
     this.tokenizer = tokenizer
   }
   private error(token: Token, message: string) {
     let lineBegin = this.idx
-    while (lineBegin > 0 && this.tokenizer.source[lineBegin] !== '\n') lineBegin--
+    while (lineBegin >= 0 && this.tokenizer.source[lineBegin] !== '\n') lineBegin--
     throw new ParseError(`${this.tokenizer.source.slice(lineBegin + 1, token.pos)}^^^ ${message}`)
   }
   private read(): Token {
     return this.tokenizer.tokens[this.idx++] || null
   }
-  private unread(n: number = 1): void {
-    this.idx -= n
-  }
-  private last(): Token {
-    return this.tokenizer.tokens[this.idx - 2]
+  private isPrimitive(tokenType: TokenType): boolean {
+    return tokenType in ValueTokenType
   }
   parse(): object | JsonValue[] {
     const token = this.read()
+    let result = null
     if (token.type === TokenType.ObjectBegin) {
-      return this.parseObject()
-    }
-    if (token.type === TokenType.ArrayBegin) {
-      return this.parseArray()
-    }
-    this.error(token, 'Json string should begins with { or [')
+      result = this.parseObject()
+    } else if (token.type === TokenType.ArrayBegin) {
+      result = this.parseArray()
+    } else this.error(token, 'Json string should begins with { or [')
+
+    let extraToken = this.read()
+    if (extraToken) this.error(extraToken, 'extra character at the end')
+
+    return result
   }
 
   private parseObject(): object {
-    const o: { [key: string]: JsonValue } = {}
-    let state = ObjectParseState.Start
-    for (let token = this.read(); token; token = this.read())
-      if (token.type === TokenType.String) {
-        if (state === ObjectParseState.MemberRead) this.error(token, 'expect comma between members')
-        this.unread()
-        const [key, value] = this.parseKeyValue()
-        o[key] = value
-        state = ObjectParseState.MemberRead
-      } else if (token.type === TokenType.MemberDelimiter) {
-        if (state !== ObjectParseState.MemberRead) this.error(token, 'expect value before comma')
-        state = ObjectParseState.ExpectMember
-      } else if (token.type === TokenType.ObjectEnd) {
-        if (state === ObjectParseState.ExpectMember) this.error(token, 'expect no comma before }')
-        return o
-      } else this.error(token, `expect string or }`)
+    const result: { [key: string]: JsonValue } = {}
+    const members: [string, JsonValue][] = []
+    let operand: string = null
+    let hasColon: boolean = false
+    let hasComma: boolean = false
 
-    this.error(this.tokenizer.tokens[this.tokenizer.tokens.length - 1], 'incorrect EOF')
+    const setMember = (operand2: JsonValue) => {
+      members.push([operand, operand2])
+      result[operand] = operand2
+      operand = null
+      hasColon = false
+      if (members.length >= 2) {
+        hasComma = false
+      }
+    }
+
+    for (let token = this.read(); token; token = this.read()) {
+      if (token.type === TokenType.String) {
+        if (operand === null) {
+          if (!members.length || hasComma) operand = token.value
+          else {
+            this.error(token, 'expect comma between members')
+          }
+        } else {
+          if (!hasColon) this.error(token, 'expect colon before vlaue')
+          else setMember(token.value)
+        }
+        continue
+      }
+      if (token.type === TokenType.KeyValueDelimiter) {
+        if (operand === null || hasColon) this.error(token, 'expect key before colon')
+        hasColon = true
+        continue
+      }
+      if (token.type === TokenType.MemberDelimiter) {
+        if (!members.length || hasComma) this.error(token, 'expect key value member before comma')
+        hasComma = true
+        continue
+      }
+      if (token.type === TokenType.ObjectEnd) {
+        if (operand !== null || hasColon || hasComma)
+          this.error(token, 'expect key value member before }')
+        return result
+      }
+      if (this.isPrimitive(token.type)) {
+        if (operand === null || !hasColon) this.error(token, 'expect value after key and colon')
+        setMember(this.parsePrimitive(token))
+        continue
+      }
+      if (token.type === TokenType.ObjectBegin) {
+        if (operand === null || !hasColon) this.error(token, 'expect key and colon before value')
+        setMember(this.parseObject())
+        continue
+      }
+      if (token.type === TokenType.ArrayBegin) {
+        if (operand === null || !hasColon) this.error(token, 'expect key and colon before value')
+        setMember(this.parseArray())
+        continue
+      }
+      this.error(token, 'unexpect token ]')
+    }
+    this.error(this.tokenizer.tokens[this.tokenizer.tokens.length - 1], 'incorrect end of Json')
   }
   private parseArray(): JsonValue[] {
-    const arr: JsonValue[] = []
-    let state = ArrayParseState.Start
+    const members: JsonValue[] = []
+    let hasComma: boolean = false
+    const addMember = (value: JsonValue) => {
+      members.push(value)
+      members.length && (hasComma = false)
+    }
     for (let token = this.read(); token; token = this.read()) {
-      if (token.type === TokenType.ArrayEnd) {
-        if (state === ArrayParseState.ExpectValue)
-          this.error(token, 'expect [ or value before array end')
-        return arr
-      } else if (token.type === TokenType.MemberDelimiter) {
-        if (state !== ArrayParseState.ValueRead) this.error(token, 'expect value before comma')
-        state = ArrayParseState.ExpectValue
+      if (token.type in ValueTokenType) {
+        if (!members.length || hasComma) addMember(this.parsePrimitive(token))
+        else this.error(token, 'expect comma between members')
         continue
-      } else {
-        if (state === ArrayParseState.ValueRead) this.error(token, 'expect comma between value')
-        this.unread()
-        let value = this.parseValue()
-        arr.push(value)
-        state = ArrayParseState.ValueRead
+      }
+      if (token.type === TokenType.MemberDelimiter) {
+        if (hasComma) this.error(token, 'expect value after comma')
+        hasComma = true
+        continue
+      }
+      if (token.type === TokenType.ArrayEnd) {
+        if (hasComma) this.error(token, 'expect no comma before ]')
+        return members
+      }
+      if (token.type === TokenType.ArrayBegin) {
+        addMember(this.parseArray())
+        continue
+      }
+      if (token.type === TokenType.ObjectBegin) {
+        addMember(this.parseObject())
+        continue
       }
     }
-    this.error(this.tokenizer.tokens[this.tokenizer.tokens.length - 1], 'incorrect end of array')
+    this.error(this.tokenizer.tokens[this.tokenizer.tokens.length - 1], 'incorrect end of Json')
   }
 
-  private parseKeyValue(): [string, JsonValue] {
-    const key = <string>this.read().value
-    let nextToken = this.read()
-    if (!nextToken || nextToken.type !== TokenType.KeyValueDelimiter) {
-      this.error(nextToken, 'expect colon after member key')
-    }
-    const value = this.parseValue()
-    return [key, value]
-  }
-  private parseValue(): JsonValue {
-    const token = this.read()
-    if (!token) this.error(token, 'expect value after colon')
-    if (token.type === TokenType.ObjectBegin) {
-      return this.parseObject()
-    }
-    if (token.type === TokenType.ArrayBegin) {
-      return this.parseArray()
-    }
-    if (token.type === TokenType.ArrayEnd) {
-      return []
-    }
-    if (token.type in ValueTokenType) {
-      switch (token.type) {
-        case ValueTokenType.Boolean:
-          return token.value === 'true' ? true : false
-        case ValueTokenType.Null:
-          return null
-        case ValueTokenType.Number:
-          return +token.value
-        default:
-          return token.value
-      }
-    } else {
-      this.error(token, `invalid key value`)
+  private parsePrimitive(token: Token): JsonValue {
+    switch (token.type) {
+      case ValueTokenType.Boolean:
+        return token.value === 'true' ? true : false
+      case ValueTokenType.Null:
+        return null
+      case ValueTokenType.Number:
+        return +token.value
+      default:
+        return token.value
     }
   }
 }
