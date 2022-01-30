@@ -18,7 +18,7 @@ const TokenType = { ...NonValueTokenType, ...ValueTokenType }
 
 type TokenType = NonValueTokenType | ValueTokenType
 
-type TokenValue = string | number | boolean | null
+type TokenValue = string
 
 class Token {
   pos: number

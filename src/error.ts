@@ -19,13 +19,4 @@ class ParseError extends JsonParseError {
   }
 }
 
-class JsonErrorThrower {
-  static tokenizeError(message: string) {
-    throw new TokenParseError(`${message}`)
-  }
-  static parseError(message: string) {
-    throw new ParseError(`${message}`)
-  }
-}
-
-export { JsonErrorThrower }
+export { TokenParseError, ParseError }
