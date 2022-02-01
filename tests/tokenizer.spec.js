@@ -28,9 +28,18 @@ describe('tokenizer testing', () => {
     it('parse "fals"', () => {
       expect(() => new Tokenizer('{"123}')).toThrow('Invalid EOF')
     })
+    it('parse line break in string', () => {
+      expect(() => new Tokenizer('"ab\nc\\t"')).toThrow('Invalid String Format')
+    })
+    it('parse random string', () => {
+      expect(() => new Tokenizer('abcd')).toThrow('Invalid Json Character')
+    })
+    it('parse wrong number format', () => {
+      expect(() => new Tokenizer('123..3')).toThrow('Invalid Number Format')
+    })
   })
   describe('different types of token parsing', () => {
-    const input = JSON.stringify([true, false, 123, '', { v: null }])
+    const input = JSON.stringify([true, false, 12.3, '', { '\\': null }])
     const tokenizer = new Tokenizer(input)
     it('parse array begin ', () => {
       expect(tokenizer.tokens[0].type).toBe(TokenType.ArrayBegin)
@@ -50,7 +59,7 @@ describe('tokenizer testing', () => {
     })
     it('parse number', () => {
       expect(tokenizer.tokens[5].type).toBe(TokenType.Number)
-      expect(tokenizer.tokens[5].value).toBe('123')
+      expect(tokenizer.tokens[5].value).toBe('12.3')
     })
     it('parse empty string', () => {
       expect(tokenizer.tokens[7].type).toBe(TokenType.String)
@@ -63,7 +72,7 @@ describe('tokenizer testing', () => {
     })
     it('parse string', () => {
       expect(tokenizer.tokens[10].type).toBe(TokenType.String)
-      expect(tokenizer.tokens[10].value).toBe('v')
+      expect(tokenizer.tokens[10].value).toBe('\\')
     })
     it('parse key value delimiter:colon', () => {
       expect(tokenizer.tokens[11].type).toBe(TokenType.KeyValueDelimiter)

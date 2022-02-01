@@ -12,12 +12,6 @@ export default class Tokenizer {
     }
   }
 
-  *[Symbol.iterator]() {
-    for (let i = 0; i < this.tokens.length; i++) {
-      yield this.tokens[i]
-    }
-  }
-
   private error(message: string) {
     let lineBegin = this.idx
     while (lineBegin > 0 && this.source[lineBegin] !== '\n') lineBegin--
@@ -83,10 +77,13 @@ export default class Tokenizer {
   private readString(): string {
     const sb = []
     for (let c = this.read(); c !== '"'; c = this.read()) {
-      if (c === null) this.error('Invalid EOF')
-      if (this.isEscape(c)) continue
+      if (this.isEscape(c)) {
+        c = this.read()
+      }
       if (this.isLineBreak(c))
         this.error('Invalid String Format:Line break should NOT be in string')
+
+      if (c === null) this.error('Invalid EOF')
       sb.push(c)
     }
     return sb.join('')
