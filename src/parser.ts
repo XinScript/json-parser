@@ -24,13 +24,13 @@ export default class Parser {
   }
   parse(): object | JsonValue[] {
     const token = this.read()
+    if (!token) return null
     let result = null
     if (token.type === TokenType.ObjectBegin) {
       result = this.parseObject()
     } else if (token.type === TokenType.ArrayBegin) {
       result = this.parseArray()
-    } else this.error(token, 'Json string should begins with { or [')
-
+    } else this.error(token, 'Json string should begin with { or [')
     let extraToken = this.read()
     if (extraToken) this.error(extraToken, 'extra character at the end')
 
@@ -62,7 +62,7 @@ export default class Parser {
             this.error(token, 'expect comma between members')
           }
         } else {
-          if (!hasColon) this.error(token, 'expect colon before vlaue')
+          if (!hasColon) this.error(token, 'expect colon before value')
           else setMember(token.value)
         }
         continue
@@ -139,12 +139,10 @@ export default class Parser {
     switch (token.type) {
       case ValueTokenType.Boolean:
         return token.value === 'true' ? true : false
-      case ValueTokenType.Null:
-        return null
       case ValueTokenType.Number:
         return +token.value
       default:
-        return token.value
+        return null
     }
   }
 }

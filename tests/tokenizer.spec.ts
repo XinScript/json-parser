@@ -1,5 +1,5 @@
-const Tokenizer = require('../dist/tokenizer').default
-const { TokenType } = require('../dist/token')
+import Tokenizer from '../src/tokenizer'
+import { TokenType } from '../src/token'
 describe('tokenizer testing', () => {
   describe('non keyword parsing', () => {
     it('parse empty string', () => {
